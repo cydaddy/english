@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Dictation Practice</title>
+</head>
+
+<script>
+// ========================================
+// TEACHER CONFIGURATION SECTION
+// ========================================
+
+// 받아쓰기 문장들을 여기에 입력하세요
+const sentences = [
+    "I'd like to play soccer with my friends.",
+    "She goes to school by bus every day.",
+    "We had pizza for lunch yesterday.",
+    "My brother is reading a book now.",
+    "They will visit the park tomorrow.",
+    "I can swim very well.",
+    "He wants to be a teacher.",
+    "We are studying English at school."
+];
+
+// 채점 옵션
+const scoringOptions = {
+    checkPunctuation: true,     // true: 구두점 포함하여 채점, false: 구두점 무시
+    checkCapitalization: true   // true: 대소문자 구분하여 채점, false: 대소문자 무시
+};
+
+// TTS 음성 옵션 (선택사항)
+const voiceOptions = {
+    rate: 1.5,      // 말하기 속도 (0.1 ~ 10, 기본값: 1)
+    pitch: 3,       // 음높이 (0 ~ 2, 기본값: 1)
+    volume: 1       // 음량 (0 ~ 1, 기본값: 1)
+};
+
+// ========================================
+// END OF CONFIGURATION SECTION
+// ========================================
+</script>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+        max-width: 800px;
+        width: 100%;
+    }
+
+    h1 {
+        text-align: center;
+        color: #667eea;
+        margin-bottom: 30px;
+        font-size: 2.5em;
+    }
+
+    .progress {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 1.1em;
+        color: #666;
+        font-weight: 600;
+    }
+
+    .instruction {
+        background: #e3f2fd;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .instruction p {
+        font-size: 1.1em;
+        color: #1976d2;
+        margin-bottom: 10px;
+    }
+
+    .audio-controls {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    button {
+        padding: 15px 30px;
+        font-size: 1.1em;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+
+    #playBtn {
+        background: #667eea;
+        color: white;
+    }
+
+    #playBtn:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    #playBtn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .play-icon::before {
+        content: '🔊 ';
+    }
+
+    .voice-selector {
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .voice-selector label {
+        display: inline-block;
+        font-size: 1em;
+        color: #666;
+        margin-right: 10px;
+        font-weight: 600;
+    }
+
+    #voiceSelect {
+        padding: 10px 15px;
+        font-size: 1em;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        background: white;
+        cursor: pointer;
+        transition: border-color 0.3s;
+        min-width: 250px;
+    }
+
+    #voiceSelect:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .input-section {
+        margin-bottom: 30px;
+    }
+
+    .input-section label {
+        display: block;
+        font-size: 1.1em;
+        color: #333;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+
+    #answerInput {
+        width: 100%;
+        padding: 15px;
+        font-size: 1.1em;
+        border: 2px solid #ddd;
+        border-radius: 10px;
+        transition: border-color 0.3s;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #answerInput:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .submit-controls {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    #submitBtn {
+        background: #48bb78;
+        color: white;
+    }
+
+    #submitBtn:hover:not(:disabled) {
+        background: #38a169;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(72, 187, 120, 0.4);
+    }
+
+    #submitBtn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    #nextBtn {
+        background: #4299e1;
+        color: white;
+    }
+
+    #nextBtn:hover {
+        background: #3182ce;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(66, 153, 225, 0.4);
+    }
+
+    #showAnswerBtn {
+        background: #ed8936;
+        color: white;
+    }
+
+    #showAnswerBtn:hover:not(:disabled) {
+        background: #dd6b20;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(237, 137, 54, 0.4);
+    }
+
+    #showAnswerBtn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    .score-display {
+        background: #fff3cd;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .score-display h3 {
+        color: #856404;
+        margin-bottom: 10px;
+    }
+
+    .score-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: #667eea;
+    }
+
+    .comparison {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .comparison h4 {
+        margin-bottom: 15px;
+        color: #333;
+    }
+
+    .text-compare {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .compare-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .compare-label {
+        font-weight: bold;
+        min-width: 100px;
+        color: #666;
+    }
+
+    .compare-text {
+        flex: 1;
+        padding: 15px;
+        background: white;
+        border-radius: 5px;
+        font-family: 'Courier New', monospace;
+        font-size: 1.1em;
+        line-height: 1.6;
+    }
+
+    .correct-answer {
+        background: #c6f6d5;
+    }
+
+    .user-answer {
+        background: #fed7d7;
+    }
+
+    .status {
+        text-align: center;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 1.1em;
+    }
+
+    .status.speaking {
+        background: #c6f6d5;
+        color: #22543d;
+    }
+
+    .status.error {
+        background: #fed7d7;
+        color: #742a2a;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+
+    .speaking-animation {
+        animation: pulse 1s ease-in-out infinite;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+</style>
+
+<body>
+    <div class="container">
+        <h1>📝 English Dictation Practice</h1>
+
+        <div class="progress">
+            <span id="progressText"></span>
+        </div>
+
+        <div class="instruction">
+            <p>🎧 Listen carefully and type what you hear</p>
+            <p style="font-size: 0.95em; color: #666;">Click the play button to hear the sentence</p>
+        </div>
+
+        <div class="voice-selector">
+            <label for="voiceSelect">Voice:</label>
+            <select id="voiceSelect">
+                <option value="">Loading voices...</option>
+            </select>
+        </div>
+
+        <div class="audio-controls">
+            <button id="playBtn" class="play-icon">Play Audio</button>
+        </div>
+
+        <div id="statusDiv" class="status hidden"></div>
+
+        <div class="input-section">
+            <label for="answerInput">Your Answer:</label>
+            <textarea id="answerInput" rows="3" placeholder="Type what you hear here..."
+                      spellcheck="false"
+                      autocomplete="off"
+                      autocorrect="off"
+                      autocapitalize="off"></textarea>
+        </div>
+
+        <div class="submit-controls">
+            <button id="submitBtn">Submit Answer</button>
+            <button id="showAnswerBtn">Show Answer</button>
+            <button id="nextBtn" class="hidden">Next Question</button>
+        </div>
+
+        <div id="scoreDiv" class="score-display hidden">
+            <h3>Your Score</h3>
+            <div class="score-value" id="scoreValue">0%</div>
+        </div>
+
+        <div id="comparisonDiv" class="comparison hidden">
+            <h4>Comparison:</h4>
+            <div class="text-compare">
+                <div class="compare-row">
+                    <span class="compare-label">Correct Answer:</span>
+                    <div class="compare-text correct-answer" id="correctText"></div>
+                </div>
+                <div class="compare-row">
+                    <span class="compare-label">Your Answer:</span>
+                    <div class="compare-text user-answer" id="yourText"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSentenceIndex = 0;
+        let synth = window.speechSynthesis;
+        let currentUtterance = null;
+        let hasSubmitted = false;
+        let availableVoices = [];
+
+        // 음성 목록 로드 및 드롭다운 채우기
+        function loadVoices() {
+            availableVoices = synth.getVoices();
+            const englishVoices = availableVoices.filter(voice => voice.lang.startsWith('en'));
+
+            const voiceSelect = document.getElementById('voiceSelect');
+            voiceSelect.innerHTML = '';
+
+            if (englishVoices.length === 0) {
+                voiceSelect.innerHTML = '<option value="">No English voices available</option>';
+                return;
+            }
+
+            englishVoices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.setAttribute('data-voice-name', voice.name);
+                voiceSelect.appendChild(option);
+            });
+
+            // localStorage에서 저장된 음성 복원
+            const savedVoiceName = localStorage.getItem('selectedVoice');
+            if (savedVoiceName) {
+                const savedOption = Array.from(voiceSelect.options).find(
+                    opt => opt.getAttribute('data-voice-name') === savedVoiceName
+                );
+                if (savedOption) {
+                    voiceSelect.value = savedOption.value;
+                }
+            }
+        }
+
+        // 선택된 음성 가져오기
+        function getSelectedVoice() {
+            const voiceSelect = document.getElementById('voiceSelect');
+            const selectedIndex = parseInt(voiceSelect.value);
+            const englishVoices = availableVoices.filter(voice => voice.lang.startsWith('en'));
+
+            if (isNaN(selectedIndex) || selectedIndex >= englishVoices.length) {
+                return englishVoices[0] || availableVoices[0];
+            }
+
+            return englishVoices[selectedIndex];
+        }
+
+        // 음성 합성 재생
+        function playCurrentSentence() {
+            if (synth.speaking) {
+                synth.cancel();
+            }
+
+            const text = sentences[currentSentenceIndex];
+            currentUtterance = new SpeechSynthesisUtterance(text);
+
+            // 드롭다운에서 선택한 음성 사용
+            const selectedVoice = getSelectedVoice();
+            if (selectedVoice) {
+                currentUtterance.voice = selectedVoice;
+            }
+
+            currentUtterance.lang = 'en-US';
+            currentUtterance.rate = voiceOptions.rate;
+            currentUtterance.pitch = voiceOptions.pitch;
+            currentUtterance.volume = voiceOptions.volume;
+
+            currentUtterance.onstart = function() {
+                showStatus('🔊 Playing audio...', 'speaking');
+                document.getElementById('playBtn').disabled = true;
+                document.getElementById('playBtn').classList.add('speaking-animation');
+            };
+
+            currentUtterance.onend = function() {
+                hideStatus();
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('playBtn').classList.remove('speaking-animation');
+            };
+
+            currentUtterance.onerror = function(event) {
+                showStatus('Error playing audio: ' + event.error, 'error');
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('playBtn').classList.remove('speaking-animation');
+            };
+
+            synth.speak(currentUtterance);
+        }
+
+        // 답안 제출 및 채점
+        function submitAnswer() {
+            const userAnswer = document.getElementById('answerInput').value.trim();
+
+            if (!userAnswer) {
+                showStatus('Please type your answer first!', 'error');
+                setTimeout(hideStatus, 2000);
+                return;
+            }
+
+            const correctAnswer = sentences[currentSentenceIndex];
+            const score = calculateScore(userAnswer, correctAnswer);
+
+            // 점수 표시
+            document.getElementById('scoreValue').textContent = score + '%';
+            document.getElementById('scoreDiv').classList.remove('hidden');
+
+            // 비교 표시
+            document.getElementById('correctText').textContent = correctAnswer;
+            document.getElementById('yourText').textContent = userAnswer;
+            document.getElementById('comparisonDiv').classList.remove('hidden');
+
+            // 버튼 상태 변경
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('showAnswerBtn').disabled = true;
+            document.getElementById('answerInput').disabled = true;
+            hasSubmitted = true;
+
+            // 다음 버튼 표시
+            if (currentSentenceIndex < sentences.length - 1) {
+                document.getElementById('nextBtn').classList.remove('hidden');
+            }
+        }
+
+        // 채점 계산
+        function calculateScore(userAnswer, correctAnswer) {
+            let processedCorrect = correctAnswer;
+            let processedUser = userAnswer;
+
+            // 옵션에 따라 텍스트 전처리
+            if (!scoringOptions.checkPunctuation) {
+                processedCorrect = processedCorrect.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, "");
+                processedUser = processedUser.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, "");
+            }
+
+            if (!scoringOptions.checkCapitalization) {
+                processedCorrect = processedCorrect.toLowerCase();
+                processedUser = processedUser.toLowerCase();
+            }
+
+            // 여러 공백을 하나로 통일하고 앞뒤 공백 제거
+            processedCorrect = processedCorrect.replace(/\s+/g, ' ').trim();
+            processedUser = processedUser.replace(/\s+/g, ' ').trim();
+
+            // 정확히 일치하는 경우
+            if (processedCorrect === processedUser) {
+                return 100;
+            }
+
+            // Levenshtein 거리 기반 유사도 계산
+            const distance = levenshteinDistance(processedCorrect, processedUser);
+            const maxLength = Math.max(processedCorrect.length, processedUser.length);
+            const similarity = maxLength === 0 ? 100 : ((maxLength - distance) / maxLength) * 100;
+            const score = Math.max(0, Math.round(similarity));
+
+            return score;
+        }
+
+        // Levenshtein 거리 계산
+        function levenshteinDistance(str1, str2) {
+            const matrix = [];
+
+            for (let i = 0; i <= str2.length; i++) {
+                matrix[i] = [i];
+            }
+
+            for (let j = 0; j <= str1.length; j++) {
+                matrix[0][j] = j;
+            }
+
+            for (let i = 1; i <= str2.length; i++) {
+                for (let j = 1; j <= str1.length; j++) {
+                    if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+
+            return matrix[str2.length][str1.length];
+        }
+
+        // 정답 보기
+        function showAnswer() {
+            const correctAnswer = sentences[currentSentenceIndex];
+            document.getElementById('answerInput').value = correctAnswer;
+            document.getElementById('answerInput').disabled = true;
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('showAnswerBtn').disabled = true;
+
+            // 정답 표시
+            document.getElementById('correctText').textContent = correctAnswer;
+            document.getElementById('yourText').textContent = '(You viewed the answer)';
+            document.getElementById('comparisonDiv').classList.remove('hidden');
+
+            // 점수 0점 처리
+            document.getElementById('scoreValue').textContent = '0%';
+            document.getElementById('scoreDiv').classList.remove('hidden');
+
+            // 다음 버튼 표시
+            if (currentSentenceIndex < sentences.length - 1) {
+                document.getElementById('nextBtn').classList.remove('hidden');
+            }
+        }
+
+        // 다음 문제로 이동
+        function nextQuestion() {
+            currentSentenceIndex++;
+
+            if (currentSentenceIndex >= sentences.length) {
+                showStatus('🎉 All questions completed! Refresh the page to start over.', 'speaking');
+                document.getElementById('playBtn').disabled = true;
+                document.getElementById('nextBtn').disabled = true;
+                return;
+            }
+
+            // UI 초기화
+            document.getElementById('answerInput').value = '';
+            document.getElementById('answerInput').disabled = false;
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('showAnswerBtn').disabled = false;
+            document.getElementById('scoreDiv').classList.add('hidden');
+            document.getElementById('comparisonDiv').classList.add('hidden');
+            document.getElementById('nextBtn').classList.add('hidden');
+            hasSubmitted = false;
+
+            // 진행 상황 업데이트
+            document.getElementById('progressText').textContent =
+                `Question ${currentSentenceIndex + 1} of ${sentences.length}`;
+        }
+
+        // 상태 메시지 표시
+        function showStatus(message, className) {
+            const statusDiv = document.getElementById('statusDiv');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + className;
+            statusDiv.classList.remove('hidden');
+        }
+
+        // 상태 메시지 숨기기
+        function hideStatus() {
+            document.getElementById('statusDiv').classList.add('hidden');
+        }
+
+        // 이벤트 리스너
+        document.getElementById('playBtn').addEventListener('click', playCurrentSentence);
+        document.getElementById('submitBtn').addEventListener('click', submitAnswer);
+        document.getElementById('showAnswerBtn').addEventListener('click', showAnswer);
+        document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+
+        // 음성 선택 변경 시 localStorage에 저장
+        document.getElementById('voiceSelect').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const voiceName = selectedOption.getAttribute('data-voice-name');
+            if (voiceName) {
+                localStorage.setItem('selectedVoice', voiceName);
+            }
+        });
+
+        // Enter 키로 제출
+        document.getElementById('answerInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && event.ctrlKey && !hasSubmitted) {
+                event.preventDefault();
+                submitAnswer();
+            }
+        });
+
+        // 음성 로딩 대기
+        window.speechSynthesis.onvoiceschanged = function() {
+            loadVoices();
+        };
+
+        // 초기화
+        window.onload = function() {
+            // 음성 목록 로드
+            loadVoices();
+
+            // 초기 진행 상황 표시
+            document.getElementById('progressText').textContent =
+                `Question ${currentSentenceIndex + 1} of ${sentences.length}`;
+
+            // 페이지 나갈 때 음성 중지
+            window.addEventListener('beforeunload', function() {
+                if (synth.speaking) {
+                    synth.cancel();
+                }
+            });
+        };
+    </script>
+</body>
+</html>
